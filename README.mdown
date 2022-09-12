@@ -1,0 +1,75 @@
+# 🤖Buzz me in
+
+The goals for this project were two-fold:
+1) come up with a fully automated solution to buzz in folks in my (and yours!) building, and
+2) have some fun with serverless: Twilio and AWS Lambda
+
+There are costs involved here as you will need to purchase a Twilio number and pay for each SMS sent as well as call time.
+These costs are super low though.
+
+## Architecture
+
+![](https://mermaid.ink/img/pako:eNptUUtLAzEQ_ivD3IT6B_awUKmiYFHYopdcpslog5tE83Cxpf_dLEnZZTWXZL7HPDInlE4xNhj4K7GVvNH07skIC_mQjM7Diw463wWqwXXb3qTjkX0DSlMfhC10ATO7G3SvXQOS-pGt2fQ3Ra6iBVgMBSzvWY3AVgXY7LZ3EJ3lmlDxvymr-2r92sEjmb2i2gYMvD8497GoPOkKMcXLOaDbdrB-fpj_zr0zDE-DXVRv24m49J_dfxqfjz2Dpx5whYa9Ia3ylk6jUGA8sGGBTX4qfqPUR4HCnrM0fapsv1XjjrCJPvEKKUXX_Vh5iYumLrqA519rIK6G)
+
+## Development
+
+I'm using Make as my task runner/build automation tool here.
+
+Building and deployment steps are all managed by a single top-level Make target for each service:
+
+- Twilio: their CLI tool along with any used plugins are installed in your local machine.
+To deploy to Twilio you can run `make twilio.deploy`
+
+- AWS Lambda: because some dependencies are platform specific I opted to install them via Docker.
+To deploy to AWS Lambda you can run `make aws.deploy`
+
+## Deployment / Installation
+
+**IMPORTANT:**
+- At the moment steps below assume you are working from a Mac with homebrew installed.
+- Bear in mind that this was a weekend project. I've automated some steps, but there is a lot that is manual yet as you will see.
+
+**Contributions are more than welcome to make this platform agnostic and to automate steps even further.**
+
+#### 1 - Initial Twilio setup
+1. Create a Twilio account
+2. Purchase a Twilio phone number and add credits to it
+3. Run `make twilio.deploy` — deployment will fail but this will install dependencies
+4. Run `twilio profiles:create` and follow prompts to login and select a profile
+5. Run `make twilio.deploy` again to deploy your function
+6. Using the Twilio UI go into your phone number. Under "Voice & Fax" select options as follows:
+- A Call Comes In: Function
+- Service: buzz-me-in
+- Environment: production
+- Function Path: /buzzer-handler
+7. You may call your Twilio number now to test the changes. You should hear "Opening the door" followed by the DTMF tones.
+
+#### 2 - AWS Lambda setup
+1. Create an AWS account
+2. Set up the AWS CLI in your host machine and log in
+3. Create a role for the lambda function we will create, under AWS's IAM section. Copy the ARN.
+4. Define the following env variables:
+- DESTINATION_PHONE_NUMBERS: a comma separated list of numbers that will receive a SMS when the door is opened,
+e.g. +19991234567,+19991236789 or +19991234567 if a single number
+- TWILIO_ACCOUNT_SID: your twilio account SID
+- TWILIO_PHONE_NUMBER: the phone number your created with Twilio
+- TWILIO_TOKEN: your twilio token
+- AWS_ROLE_ARN: the ARN for the role you created previously
+5. Invoke `make aws.deploy`
+6. Using the AWS UI create an "API Gateway" trigger for the lambda function just created. The security mechanism should be "Open".
+7. Copy the generated API endpoint and go back to the Twilio UI.
+
+#### 3 - Finalize Twilio setup
+1. Go into your phone number again.
+2. Under "Call status changes" paste your API endpoint from before.
+
+That should be it.
+As a quick experiment, dial in to your Twilio number.
+A few seconds after the DTMF tones you should receive SMSs on the registered phone numbers.
+
+You are ready to provide to the building manager your Twilio phone number for the buzzer.
+
+## License
+
+The gem is available as open source under the terms of the [Apache 2.0 License](./LICENSE).
+
